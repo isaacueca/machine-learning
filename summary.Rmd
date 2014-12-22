@@ -1,0 +1,89 @@
+---
+title: "Machine Learning Project"
+author: "Isaac da Silva"
+date: "Sunday, December 21, 2014"
+output:
+  html_document:
+    theme: spacelab
+---
+# Summary
+
+The objetive of the present project was to use data from accelerometers placed on the belt, forearm, arm, and dumbell of six participants in order to evaluate how well the partipants performed exercises.
+
+### Loading and preprocessing the data
+Two csv files were provided, which contained the training and test data sets. The data came from this source: http://groupware.les.inf.puc-rio.br/har. The data files were downloaded into the project's local directory and then loaded into R.
+
+```{r, eval = FALSE}
+dataTrainingSource <- read.csv("pml-training.csv", na.strings= c("NA",""," "))
+dataTestingSource <- read.csv("pml-testing.csv", na.strings= c("NA",""," "))
+```
+
+The original data source contained a lot of empty and redundant columns. Those got removed in the sanitization process of cleaning the data and preparing it for analysis. 
+
+```{r}
+# Sanitize the data set by eliminating columns that are empty
+emptyColumns <- apply(dataTrainingSource, 2, function(x) {sum(is.na(x))})
+dataTraining <- dataTrainingSource[,which(emptyColumns == 0)]
+# Remove redundant columns
+dataTraining <- dataTraining[8:length(dataTraining)]
+```
+
+### Creating the Training and Testing data sets
+The original data source was then partioned between training and testing data sets. 70% of the original data source was allocated to training the data and 30% to testing/validate it.
+
+```{r}
+# Create training and testing sets via partition
+dataPartition <- createDataPartition(y = dataTraining$classe, p = 0.7, list = FALSE)
+trainingSet <- dataTraining[dataPartition, ]
+testingSet <- dataTraining[-dataPartition, ]
+```
+
+### Creating the Model
+
+A random forest model was choosen to be used against the data set because the model is very accurate and efficient against large data sets. 
+
+Random Forests algorithm is a classifier based on primarily two methods - bagging and random subspace method. 
+
+```{r}
+# Apply Random Forest against our data to generate the model. Classe (quality) is the outcome and everything else in the data set will be the predictors.
+model <- randomForest(classe ~ ., data = trainingSet)
+model
+```
+
+The out-of-bag (oob) error estimate that was obtained from the model was considered satisfactory.
+
+### Model Evaluation
+
+In order to further test its accuracy, the model was applied against the remaining 30% of the original data set. 
+After that, a confusion matrix was used in order to evaluate the precision of the model.
+
+```{r}
+# Validate the model against the testing set (cross-validation)
+validateModel <- predict(model, testingSet)
+
+# Get results of  cross validation
+confusionMatrix(testingSet$classe, validateModel)
+```
+
+The model yielded over 99% of prediction accuracy, which proved that it could be confidently used to predict other data sets.
+
+### Predictions
+
+The model was then applied against the 20 test cases present in the testing data set that was imported previously, in order to evaluate how well each of these 20 participants was performing its exercises. 
+
+```{r}
+#Validate Model using the Testing Data Set
+emptyColumnsForDataTesting <- apply(dataTestingSource, 2, function(x) {sum(is.na(x))})
+
+dataTesting <- dataTestingSource[,which(emptyColumnsForDataTesting == 0)]
+# Remove redundant columns
+dataTesting <- dataTesting[8:length(dataTesting)]
+
+# Apply the model to the Testing Set
+evaluateModel <- predict(model, dataTesting)
+evaluateModel
+```
+
+### Conclusion
+
+The random forrest model that we applied to the data proved to be a very reliable method to properly predict how well a person could be performing its exercises.
